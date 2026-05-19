@@ -339,22 +339,20 @@ module Rack
     def parse_cookies_header(value)
       return {} unless value
 
-      if Utils.rfc6265_compliant_cookies
-        value.split(/; */n).each_with_object({}) do |cookie, cookies|
-          next if cookie.empty?
-          key, val = cookie.split('=', 2)
-          next if val.nil?
-          val = val[1..-2] if val.start_with?('"') && val.end_with?('"') && val.length >= 2
-          next unless valid_cookie_value?(val)
-          cookies[key] = val unless cookies.key?(key)
-        end
-      else
         value.split(/; */n).each_with_object({}) do |cookie, cookies|
           next if cookie.empty?
           key, value = cookie.split('=', 2)
-          cookies[key] = (unescape(value) rescue value) unless cookies.key?(key)
+          next if value.nil? || cookies.key?(key)
+
+          if Utils.rfc6265_compliant_cookies
+            value = value[1..-2] if value.length >= 2 && value.start_with?('"') && value.end_with?('"')
+            next unless valid_cookie_value?(value)
+          else
+            value = (unescape(value) rescue value)
+          end
+
+          cookies[key] = value
         end
-      end
     end
 
     # :call-seq:
