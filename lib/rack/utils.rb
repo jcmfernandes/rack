@@ -345,9 +345,10 @@ module Rack
           next if cookies.key?(key)
 
           if Utils.rfc6265_compliant_cookies
-            next if value.nil?
-            value = value[1..-2] if value.length >= 2 && value.start_with?('"') && value.end_with?('"')
-            next unless valid_cookie_value?(value)
+            unless value.nil?
+              value = value[1..-2] if value.length >= 2 && value.start_with?('"') && value.end_with?('"')
+              next unless valid_cookie_value?(value)
+            end
           else
             value = (unescape(value) rescue value)
           end
