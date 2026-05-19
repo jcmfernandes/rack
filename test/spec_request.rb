@@ -1468,6 +1468,42 @@ EOF
     })
   end
 
+  describe "with Rack::Utils.rfc6265_cookies enabled" do
+    before do
+      @prev_rfc6265 = Rack::Utils.rfc6265_cookies
+      Rack::Utils.rfc6265_cookies = true
+    end
+
+    after do
+      Rack::Utils.rfc6265_cookies = @prev_rfc6265
+    end
+
+    it "round-trips cookie values verbatim between Response and Request" do
+      ["a+b", "a%2Bb", "a b", "a,b", "a&b", "foo=bar", "/path?q=1"].each do |value|
+        res = Rack::Response.new
+        res.set_cookie "foo", value
+        req = make_request Rack::MockRequest.env_for("", "HTTP_COOKIE" => res["set-cookie"])
+        req.cookies.must_equal({ "foo" => value })
+      end
+    end
+
+    it "drops request cookies with invalid octets" do
+      req = make_request Rack::MockRequest.env_for("", "HTTP_COOKIE" => "good=ok; bad=a\x00b; also_good=yes")
+      req.cookies.must_equal({ "good" => "ok", "also_good" => "yes" })
+    end
+
+    it "sanitizes invalid octets in Response#set_cookie" do
+      res = Rack::Response.new
+      _, err = capture_io do
+        res.set_cookie "foo", "a\x00b\x01c"
+      end
+      res["set-cookie"].must_equal "foo=abc"
+      err.must_match(/rack: invalid byte/)
+      req = make_request Rack::MockRequest.env_for("", "HTTP_COOKIE" => res["set-cookie"])
+      req.cookies.must_equal({ "foo" => "abc" })
+    end
+  end
+
   it "provide setters" do
     req = make_request(e = Rack::MockRequest.env_for(""))
     req.script_name.must_equal ""
