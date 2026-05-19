@@ -302,7 +302,7 @@ Concretely:
   no longer percent-decodes values, strips a surrounding pair of double quotes
   if present, and silently drops any cookie whose value contains an invalid
   octet. An "invalid octet" is any byte outside `0x20..0x7E` or in
-  `{'"', ';', '\\'}`.
+  `['"', ';', '\\']`.
 - `Rack::Utils.set_cookie_header` (and therefore `Rack::Response#set_cookie`)
   no longer percent-encodes values. Invalid octets are stripped from the
   output, and one warning is emitted per dropped byte via `Kernel#warn`.
