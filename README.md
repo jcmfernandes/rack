@@ -287,6 +287,31 @@ Set to 0 for no limit.
 
 Can also be set via the `RACK_MULTIPART_TOTAL_PART_LIMIT` environment variable.
 
+### `rfc6265_cookies`
+
+```ruby
+Rack::Utils.rfc6265_cookies = false # default
+```
+
+When enabled, cookie parsing and serialization follow RFC 6265: cookie values
+are treated as opaque octet strings rather than being form-encoded with
+`URI.encode_www_form_component` / decoded with `URI.decode_www_form_component`.
+Concretely:
+
+- `Rack::Utils.parse_cookies_header` (and therefore `Rack::Request#cookies`)
+  no longer percent-decodes values, strips a surrounding pair of double quotes
+  if present, and silently drops any cookie whose value contains an invalid
+  octet. An "invalid octet" is any byte outside `0x20..0x7E` or in
+  `{'"', ';', '\\'}`.
+- `Rack::Utils.set_cookie_header` (and therefore `Rack::Response#set_cookie`)
+  no longer percent-encodes values. Invalid octets are stripped from the
+  output, and one warning is emitted per dropped byte via `Kernel#warn`.
+
+Note that this is a breaking change: cookies previously written by Rack
+contain percent-encoded octets (e.g. `%2B` for `+`) that will be delivered
+as their literal bytes once the flag is on. Default is `false`; the default
+is expected to flip in a future major release.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for specific details about how to make a
