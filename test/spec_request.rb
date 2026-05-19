@@ -1492,6 +1492,11 @@ EOF
       req.cookies.must_equal({ "good" => "ok", "also_good" => "yes" })
     end
 
+    it "drops request cookies whose name is not a valid token" do
+      req = make_request Rack::MockRequest.env_for("", "HTTP_COOKIE" => 'good=ok; bad name=v; a"b=v; a,b=v; also_good=yes')
+      req.cookies.must_equal({ "good" => "ok", "also_good" => "yes" })
+    end
+
     it "sanitizes invalid octets in Response#set_cookie" do
       res = Rack::Response.new
       _, err = capture_io do
