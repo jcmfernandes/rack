@@ -17,7 +17,7 @@ All notable changes to this project will be documented in this file. For info on
 - Add `Rack::Request#prefetch?` for identifying requests with `Sec-Purpose: prefetch` header set. ([#2405](https://github.com/rack/rack/pull/2405), [@glaszig](https://github.com/glaszig))
 - Add `rack.request.trusted_proxy` environment key to indicate whether the request is coming from a trusted proxy.
 - Add `Rack::Request#headers` for simpler access to request headers by header name. ([#1881](https://github.com/rack/rack/pull/1881), [@jeremyevans](https://github.com/jeremyevans))
-- Add opt-in RFC 6265 compliant cookie handling via `Rack::Utils.rfc6265_cookies` (default `false`). When enabled, cookie values are treated as opaque octets: no form-encoding on write, no form-decoding on read; the read path drops cookies whose value contains invalid octets; the write path strips invalid octets and warns once per dropped byte via `Kernel#warn`.
+- Add opt-in RFC 6265 compliant cookie handling via `Rack::Utils.rfc6265_compliant_cookies` (default `false`). When enabled, cookie values are treated as opaque octets: no form-encoding on write, no form-decoding on read; the read path drops cookies whose value contains invalid octets; the write path strips invalid octets and warns once per dropped byte via `Kernel#warn`.
 
 ### Changed
 

@@ -287,10 +287,10 @@ Set to 0 for no limit.
 
 Can also be set via the `RACK_MULTIPART_TOTAL_PART_LIMIT` environment variable.
 
-### `rfc6265_cookies`
+### `rfc6265_compliant_cookies`
 
 ```ruby
-Rack::Utils.rfc6265_cookies = false # default
+Rack::Utils.rfc6265_compliant_cookies = false # default
 ```
 
 When enabled, cookie parsing and serialization follow RFC 6265: cookie values
@@ -307,10 +307,32 @@ Concretely:
   no longer percent-encodes values. Invalid octets are stripped from the
   output, and one warning is emitted per dropped byte via `Kernel#warn`.
 
-Note that this is a breaking change: cookies previously written by Rack
-contain percent-encoded octets (e.g. `%2B` for `+`) that will be delivered
-as their literal bytes once the flag is on. Default is `false`; the default
-is expected to flip in a future major release.
+#### Migration path
+
+This is a breaking change. Cookies previously written by Rack contain
+percent-encoded octets (e.g. `%2B` for `+`, `%20` for space) that *will not*
+be decoded once the flag is on - they will be delivered to your application
+as the literal characters `%2B` and `%20`. Symmetrically, any cookie value
+your application writes that contained a `+` or other byte that Rack used
+to encode will now be written verbatim. The most visible consequence is
+that existing session cookies (and any other cookies whose value contains
+form-encoded bytes) will no longer round-trip across the flip and may
+appear corrupt to your application.
+
+This is why the flag defaults to `false` for now. **The default may
+flip to `true` in the next major release of Rack**, at which point the
+legacy form-encoding behavior will go away entirely. To migrate:
+
+1. Audit any place that writes a cookie value containing bytes outside the
+   RFC 6265 cookie-octet set - once the flag is on, those bytes will be
+   stripped from the response with a warning.
+2. Audit any place that reads a cookie value and expects Rack to have
+   percent-decoded it. After the flip, the value arrives verbatim.
+3. Invalidate or rotate existing cookies (sessions in particular) before
+   flipping the flag in production, since values written under the old
+   behavior won't round-trip cleanly.
+4. Once your app is ready, set `Rack::Utils.rfc6265_compliant_cookies = true`
+   early in your boot sequence to opt in ahead of the default flip.
 
 ## Contributing
 

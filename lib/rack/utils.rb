@@ -76,7 +76,7 @@ module Rack
       # via +Kernel#warn+) on write. Defaults to false to preserve
       # historical behavior; this default is expected to flip in a future
       # major release.
-      attr_accessor :rfc6265_cookies
+      attr_accessor :rfc6265_compliant_cookies
     end
 
     # The maximum number of file parts a request can contain. Accepting too
@@ -88,7 +88,7 @@ module Rack
     # many can lead to excessive memory use and parsing time.
     self.multipart_total_part_limit = (ENV['RACK_MULTIPART_TOTAL_PART_LIMIT'] || 4096).to_i
 
-    self.rfc6265_cookies = false
+    self.rfc6265_compliant_cookies = false
 
     def self.param_depth_limit
       default_query_parser.param_depth_limit
@@ -339,7 +339,7 @@ module Rack
     def parse_cookies_header(value)
       return {} unless value
 
-      if Utils.rfc6265_cookies
+      if Utils.rfc6265_compliant_cookies
         value.split(/; */n).each_with_object({}) do |cookie, cookies|
           next if cookie.empty?
           key, val = cookie.split('=', 2)
@@ -379,7 +379,7 @@ module Rack
     # range and is not DQUOTE, semicolon, or backslash. This is slightly
     # looser than the strict RFC 6265 cookie-octet ABNF (which also
     # forbids SP and comma) but reflects what real-world clients tolerate.
-    # Used by the +rfc6265_cookies+ code paths in +parse_cookies_header+
+    # Used by the +rfc6265_compliant_cookies+ code paths in +parse_cookies_header+
     # and +set_cookie_header+.
     def valid_cookie_octet?(byte)
       byte >= 0x20 && byte < 0x7F && byte != 0x22 && byte != 0x3B && byte != 0x5C
@@ -457,7 +457,7 @@ module Rack
       value = [value] unless Array === value
 
       encoded_value =
-        if Utils.rfc6265_cookies
+        if Utils.rfc6265_compliant_cookies
           value.map { |v| sanitize_cookie_value(v.to_s) }.join('&')
         else
           value.map { |v| escape(v) }.join('&')

@@ -709,14 +709,14 @@ describe Rack::Utils, "cookies" do
   end
 end
 
-describe Rack::Utils, "rfc6265_cookies" do
+describe Rack::Utils, "rfc6265_compliant_cookies" do
   before do
-    @prev_rfc6265 = Rack::Utils.rfc6265_cookies
-    Rack::Utils.rfc6265_cookies = true
+    @prev_rfc6265 = Rack::Utils.rfc6265_compliant_cookies
+    Rack::Utils.rfc6265_compliant_cookies = true
   end
 
   after do
-    Rack::Utils.rfc6265_cookies = @prev_rfc6265
+    Rack::Utils.rfc6265_compliant_cookies = @prev_rfc6265
   end
 
   it "does not percent-decode cookie values on read" do
