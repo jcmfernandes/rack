@@ -745,6 +745,13 @@ describe Rack::Utils, "rfc6265_compliant_cookies" do
     Rack::Utils.parse_cookies_header(header).must_equal({ "foo" => value })
   end
 
+  it "drops cookies whose name is not a valid RFC 7230 token on read" do
+    Rack::Utils.parse_cookies_header("good=ok; bad name=v; also_good=yes").must_equal({ "good" => "ok", "also_good" => "yes" })
+    Rack::Utils.parse_cookies_header('a"b=v').must_equal({})
+    Rack::Utils.parse_cookies_header("a,b=v").must_equal({})
+    Rack::Utils.parse_cookies_header("=v").must_equal({})
+  end
+
   it "drops cookies whose value contains invalid octets on read" do
     Rack::Utils.parse_cookies_header("good=ok; bad=a\x00b").must_equal({ "good" => "ok" })
     Rack::Utils.parse_cookies_header("a=\"\\\"").must_equal({})

@@ -342,6 +342,7 @@ module Rack
       value.split(/; */n).each_with_object({}) do |cookie, cookies|
         next if cookie.empty?
         key, value = cookie.split('=', 2)
+        next if Utils.rfc6265_compliant_cookies && key !~ VALID_COOKIE_KEY
         next if cookies.key?(key)
         if value.nil?
           cookies[key] = nil
