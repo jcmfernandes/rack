@@ -755,6 +755,10 @@ describe Rack::Utils, "rfc6265_compliant_cookies" do
     Rack::Utils.parse_cookies_header('key="value"').must_equal({ "key" => "value" })
   end
 
+  it "treats a DQUOTE-wrapped empty value as an empty string" do
+    Rack::Utils.parse_cookies_header('foo=""').must_equal({ "foo" => "" })
+  end
+
   it "accepts bare tokens with no = on read, storing nil for the value" do
     Rack::Utils.parse_cookies_header("foo").must_equal({ "foo" => nil })
     Rack::Utils.parse_cookies_header("foo=bar; baz").must_equal({ "foo" => "bar", "baz" => nil })
