@@ -352,7 +352,7 @@ module Rack
           value = value[1..-2] if value.length >= 2 && value.start_with?('"') && value.end_with?('"')
           next unless valid_cookie_value?(value)
         else
-          value = (unescape(value) rescue value)
+          value = unescape(value) rescue value
         end
 
         cookies[key] = value
