@@ -342,9 +342,10 @@ module Rack
         value.split(/; */n).each_with_object({}) do |cookie, cookies|
           next if cookie.empty?
           key, value = cookie.split('=', 2)
-          next if value.nil? || cookies.key?(key)
+          next if cookies.key?(key)
 
           if Utils.rfc6265_compliant_cookies
+            next if value.nil?
             value = value[1..-2] if value.length >= 2 && value.start_with?('"') && value.end_with?('"')
             next unless valid_cookie_value?(value)
           else
