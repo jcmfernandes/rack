@@ -68,6 +68,15 @@ module Rack
       # the limit only counts parts with filenames.
       alias multipart_part_limit multipart_file_limit
       alias multipart_part_limit= multipart_file_limit=
+
+      # When true, parse and serialize cookies per RFC 6265: values are
+      # treated as opaque octet strings (no form-encoding on write, no
+      # form-decoding on read). Cookies whose value contains invalid octets
+      # are dropped on read; invalid octets are stripped (with a warning
+      # via +Kernel#warn+) on write. Defaults to false to preserve
+      # historical behavior; this default is expected to flip in a future
+      # major release.
+      attr_accessor :rfc6265_cookies
     end
 
     # The maximum number of file parts a request can contain. Accepting too
@@ -78,6 +87,8 @@ module Rack
     # The maximum total number of parts a request can contain. Accepting too
     # many can lead to excessive memory use and parsing time.
     self.multipart_total_part_limit = (ENV['RACK_MULTIPART_TOTAL_PART_LIMIT'] || 4096).to_i
+
+    self.rfc6265_cookies = false
 
     def self.param_depth_limit
       default_query_parser.param_depth_limit
@@ -328,10 +339,21 @@ module Rack
     def parse_cookies_header(value)
       return {} unless value
 
-      value.split(/; */n).each_with_object({}) do |cookie, cookies|
-        next if cookie.empty?
-        key, value = cookie.split('=', 2)
-        cookies[key] = (unescape(value) rescue value) unless cookies.key?(key)
+      if Utils.rfc6265_cookies
+        value.split(/; */n).each_with_object({}) do |cookie, cookies|
+          next if cookie.empty?
+          key, val = cookie.split('=', 2)
+          next if val.nil?
+          val = val[1..-2] if val.start_with?('"') && val.end_with?('"') && val.length >= 2
+          next unless valid_cookie_value?(val)
+          cookies[key] = val unless cookies.key?(key)
+        end
+      else
+        value.split(/; */n).each_with_object({}) do |cookie, cookies|
+          next if cookie.empty?
+          key, value = cookie.split('=', 2)
+          cookies[key] = (unescape(value) rescue value) unless cookies.key?(key)
+        end
       end
     end
 
@@ -352,6 +374,35 @@ module Rack
     # A <cookie-name> can be any US-ASCII characters, except control characters, spaces, or tabs. It also must not contain a separator character like the following: ( ) < > @ , ; : \ " / [ ] ? = { }.
     VALID_COOKIE_KEY = /\A[!#$%&'*+\-\.\^_`|~0-9a-zA-Z]+\z/.freeze
     private_constant :VALID_COOKIE_KEY
+
+    # A byte is a valid cookie-octet if it falls in the printable ASCII
+    # range and is not DQUOTE, semicolon, or backslash. This is slightly
+    # looser than the strict RFC 6265 cookie-octet ABNF (which also
+    # forbids SP and comma) but reflects what real-world clients tolerate.
+    # Used by the +rfc6265_cookies+ code paths in +parse_cookies_header+
+    # and +set_cookie_header+.
+    def valid_cookie_octet?(byte)
+      byte >= 0x20 && byte < 0x7F && byte != 0x22 && byte != 0x3B && byte != 0x5C
+    end
+
+    # Returns true if every byte of +str+ is a valid cookie-octet.
+    def valid_cookie_value?(str)
+      str.each_byte.all? { |b| valid_cookie_octet?(b) }
+    end
+
+    # Returns a copy of +str+ with invalid cookie-octets removed, emitting
+    # a warning via +Kernel#warn+ once per dropped byte.
+    def sanitize_cookie_value(str)
+      out = String.new(encoding: str.encoding)
+      str.each_byte do |b|
+        if valid_cookie_octet?(b)
+          out << b
+        else
+          warn("rack: invalid byte %p in cookie value; dropping invalid bytes" % b.chr)
+        end
+      end
+      out
+    end
 
     # :call-seq:
     #   set_cookie_header(key, value) -> encoded string
@@ -405,7 +456,14 @@ module Rack
 
       value = [value] unless Array === value
 
-      return "#{key}=#{value.map { |v| escape v }.join('&')}#{domain}" \
+      encoded_value =
+        if Utils.rfc6265_cookies
+          value.map { |v| sanitize_cookie_value(v.to_s) }.join('&')
+        else
+          value.map { |v| escape(v) }.join('&')
+        end
+
+      return "#{key}=#{encoded_value}#{domain}" \
         "#{path}#{max_age}#{expires}#{secure}#{httponly}#{same_site}#{partitioned}"
     end
 

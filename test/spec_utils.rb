@@ -709,6 +709,78 @@ describe Rack::Utils, "cookies" do
   end
 end
 
+describe Rack::Utils, "rfc6265_cookies" do
+  before do
+    @prev_rfc6265 = Rack::Utils.rfc6265_cookies
+    Rack::Utils.rfc6265_cookies = true
+  end
+
+  after do
+    Rack::Utils.rfc6265_cookies = @prev_rfc6265
+  end
+
+  it "does not percent-decode cookie values on read" do
+    Rack::Utils.parse_cookies_header("foo=%2B").must_equal({ "foo" => "%2B" })
+    Rack::Utils.parse_cookies_header("foo=a+b").must_equal({ "foo" => "a+b" })
+  end
+
+  it "does not percent-encode cookie values on write" do
+    Rack::Utils.set_cookie_header("foo", "a+b").must_equal "foo=a+b"
+  end
+
+  it "round-trips a value containing +" do
+    header = Rack::Utils.set_cookie_header("foo", "a+b")
+    Rack::Utils.parse_cookies_header(header).must_equal({ "foo" => "a+b" })
+  end
+
+  it "accepts SP and comma in cookie values (looser than strict RFC 6265 cookie-octet ABNF)" do
+    Rack::Utils.set_cookie_header("foo", "a b,c").must_equal "foo=a b,c"
+    Rack::Utils.parse_cookies_header("foo=a b,c").must_equal({ "foo" => "a b,c" })
+  end
+
+  it "round-trips all permitted cookie-octets" do
+    value = (0x20...0x7F).to_a.pack('C*')
+    value.delete!('";\\')
+    header = Rack::Utils.set_cookie_header("foo", value)
+    Rack::Utils.parse_cookies_header(header).must_equal({ "foo" => value })
+  end
+
+  it "drops cookies whose value contains invalid octets on read" do
+    Rack::Utils.parse_cookies_header("good=ok; bad=a\x00b").must_equal({ "good" => "ok" })
+    Rack::Utils.parse_cookies_header("a=\"\\\"").must_equal({})
+    Rack::Utils.parse_cookies_header("a=b\x7Fc").must_equal({})
+  end
+
+  it "strips surrounding DQUOTEs from cookie values" do
+    Rack::Utils.parse_cookies_header('key="value"').must_equal({ "key" => "value" })
+  end
+
+  it "drops bare tokens with no = on read" do
+    Rack::Utils.parse_cookies_header("foo").must_equal({})
+    Rack::Utils.parse_cookies_header("foo=bar; baz").must_equal({ "foo" => "bar" })
+  end
+
+  it "keeps the first occurrence of a duplicate key" do
+    Rack::Utils.parse_cookies_header("foo=first; foo=second").must_equal({ "foo" => "first" })
+  end
+
+  it "strips invalid octets and warns via Kernel#warn once per dropped byte" do
+    result = nil
+    _, err = capture_io do
+      result = Rack::Utils.set_cookie_header("k", "a\x00b\x01c")
+    end
+    result.must_equal "k=abc"
+    err.lines.map(&:chomp).must_equal [
+      %q(rack: invalid byte "\x00" in cookie value; dropping invalid bytes),
+      %q(rack: invalid byte "\x01" in cookie value; dropping invalid bytes),
+    ]
+  end
+
+  it "passes literal & in Array values through unchanged" do
+    Rack::Utils.set_cookie_header("k", %w[a b]).must_equal "k=a&b"
+  end
+end
+
 describe Rack::Utils, "get_byte_ranges" do
   it "returns an empty list if the sum of the ranges is too large" do
     assert_equal [], Rack::Utils.byte_ranges({ "HTTP_RANGE" => "bytes=0-20,0-500" }, 500)
