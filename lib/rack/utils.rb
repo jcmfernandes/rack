@@ -327,9 +327,9 @@ module Rack
     end
 
     # :call-seq:
-    #   parse_cookies_header(value) -> hash
+    #   parse_cookies_header(header) -> hash
     #
-    # Parse cookies from the provided header +value+. Cookie pairs are
+    # Parse cookies from the provided +header+ string. Cookie pairs are
     # separated by semicolons (RFC 6265). Returns a map of cookie +key+
     # to cookie +value+. When duplicate keys are present, the first
     # occurrence wins. A cookie pair without an +=+ (a bare token) is
@@ -354,10 +354,10 @@ module Rack
     #   parse_cookies_header('myname=myvalue; max-age=0')
     #   # => {"myname"=>"myvalue", "max-age"=>"0"}
     #
-    def parse_cookies_header(value)
-      return {} unless value
+    def parse_cookies_header(header)
+      return {} unless header
 
-      value.split(/; */n).each_with_object({}) do |cookie, cookies|
+      header.split(/; */n).each_with_object({}) do |cookie, cookies|
         next if cookie.empty?
         key, value = cookie.split('=', 2)
         next if Utils.rfc6265_compliant_cookies && key !~ VALID_COOKIE_KEY
