@@ -339,12 +339,17 @@ module Rack
     #
     # - When +false+ (the default), values are decoded with
     #   +URI.decode_www_form_component+ (with the raw value kept if
-    #   decoding raises) and cookie names are not validated.  - When
-    #   +true+, values are treated as opaque octet strings - no
-    #   percent-decoding is performed, a surrounding pair of DQUOTEs
-    #   is stripped if present, and any cookie whose name fails the
-    #   RFC 7230 token grammar or whose value contains an invalid
+    #   decoding raises) and cookie names are not validated.
+    # - When +true+, values are treated as opaque octet strings - no
+    #   percent-decoding is performed, a surrounding pair of DQUOTEs is
+    #   stripped if present, and any cookie whose name fails the RFC
+    #   7230 token grammar or whose value contains an invalid
     #   cookie-octet (see +valid_cookie_octet?+) is silently dropped.
+    #
+    # The compliant path is intentionally looser than the strict RFC
+    # 6265 +cookie-octet+ ABNF: it permits SP (+0x20+) and comma
+    # (+0x2C+) in cookie values, which the ABNF forbids. This reflects
+    # what real-world clients tolerate.
     #
     #   parse_cookies_header('myname=myvalue; max-age=0')
     #   # => {"myname"=>"myvalue", "max-age"=>"0"}
