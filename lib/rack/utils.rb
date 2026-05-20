@@ -329,9 +329,22 @@ module Rack
     # :call-seq:
     #   parse_cookies_header(value) -> hash
     #
-    # Parse cookies from the provided header +value+ according to RFC6265. The
-    # syntax for cookie headers only supports semicolons. Returns a map of
-    # cookie +key+ to cookie +value+.
+    # Parse cookies from the provided header +value+. Cookie pairs are
+    # separated by semicolons (RFC 6265). Returns a map of cookie +key+
+    # to cookie +value+. When duplicate keys are present, the first
+    # occurrence wins. A cookie pair without an +=+ (a bare token) is
+    # stored with a +nil+ value.
+    #
+    # Behavior depends on +Rack::Utils.rfc6265_compliant_cookies+:
+    #
+    # - When +false+ (the default), values are decoded with
+    #   +URI.decode_www_form_component+ (with the raw value kept if
+    #   decoding raises) and cookie names are not validated.  - When
+    #   +true+, values are treated as opaque octet strings - no
+    #   percent-decoding is performed, a surrounding pair of DQUOTEs
+    #   is stripped if present, and any cookie whose name fails the
+    #   RFC 7230 token grammar or whose value contains an invalid
+    #   cookie-octet (see +valid_cookie_octet?+) is silently dropped.
     #
     #   parse_cookies_header('myname=myvalue; max-age=0')
     #   # => {"myname"=>"myvalue", "max-age"=>"0"}
